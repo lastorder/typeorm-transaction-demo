@@ -1,20 +1,16 @@
-import { AppDataSource } from "./data-source"
-import { User } from "./entity/User"
+import {AppDataSource} from "./data-source"
+import {TransactionDemoService} from "./transanction-demo-service";
 
 AppDataSource.initialize().then(async () => {
 
-    console.log("Inserting a new user into the database...")
-    const user = new User()
-    user.firstName = "Timber"
-    user.lastName = "Saw"
-    user.age = 25
-    await AppDataSource.manager.save(user)
-    console.log("Saved a new user with id: " + user.id)
+    const demoService = new TransactionDemoService(AppDataSource);
 
-    console.log("Loading users from the database...")
-    const users = await AppDataSource.manager.find(User)
-    console.log("Loaded users: ", users)
+    await demoService.clearData();
+    // await demoService.createUser(true);
+    // await demoService.demoWrongTransaction(true);
 
-    console.log("Here you can setup and run express / fastify / any other framework.")
+    console.log('########## start demoBasicTransaction ########## ');
+
+    await demoService.demoBasicTransaction(true);
 
 }).catch(error => console.log(error))
