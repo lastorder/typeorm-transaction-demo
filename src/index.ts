@@ -7,8 +7,9 @@ AppDataSource.initialize().then(async () => {
 
     await demoService.initData();
 
-    // await demoService.demoNoTransaction(true);
-    await demoService.demoBasicTransaction(true);
+    await demoService.demoNoTransaction(true);
+    // await demoService.demoBasicTransaction(true);
     // await demoService.demoConcurrentTransaction();
+    // await demoService.demoPhantomReadTransaction();
 
 }).catch(error => console.log(error))

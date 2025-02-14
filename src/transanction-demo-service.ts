@@ -120,6 +120,54 @@ export class TransactionDemoService {
         ];
         await Promise.all(tasks);
 
+        console.log('--------------> Checkout how many successful redeeming, and try to solve the issue');
+    }
+
+
+    // one promotion code can be redeemed only twice
+    private async multipleRedeemGiftCode(code: string, user_id: number, comments?: string) {
+        await this.dataSource.createEntityManager().transaction("REPEATABLE READ", async entityManager => {
+            const giftCodeRepo = entityManager.withRepository(this.giftCodeRepository);
+            const giftRedeemRepo = entityManager.withRepository(this.giftRedeemRepository);
+
+            const giftCode = await giftCodeRepo.findOne({
+                where: {code: code, status: 'active'},
+            });
+
+            if (giftCode) {
+                console.log('--------------> Start redeeming gift code for user: ' + user_id);
+                const alreadyRedeemCount = await giftRedeemRepo.count({where: {gift_code_id: giftCode.id}})
+
+                if (alreadyRedeemCount < 2) {
+                    console.log('--------------> Process redeeming gift code for user: ' + user_id);
+                    const redeem = new GiftRedeem();
+                    redeem.gift_code_id = giftCode.id;
+                    redeem.user_id = user_id;
+                    redeem.comments = comments;
+                    await giftRedeemRepo.save(redeem);
+
+                    console.log('--------------> Finish redeeming gift code for user: ' + user_id);
+                } else {
+                    console.log('--------------> Gift code has been redeemed twice');
+                }
+
+            } else {
+                console.log('--------------> Gift code not found');
+            }
+        });
+    }
+
+    async demoPhantomReadTransaction() {
+
+        const tasks = [
+            this.multipleRedeemGiftCode('123456', 1, 'first'),
+            this.multipleRedeemGiftCode('123456', 2, 'second'),
+            this.multipleRedeemGiftCode('123456', 3, 'third'),
+            this.multipleRedeemGiftCode('123456', 4, 'fourth'),
+            this.multipleRedeemGiftCode('123456', 5, 'fifth'),
+        ];
+        await Promise.all(tasks);
+
         console.log('--------------> Checkout how many successful redeeming, and try to solve the issue');  //   "REPEATABLE READ",
     }
 }
