@@ -31,8 +31,7 @@ export class TransactionDemoService {
         code.code = '123456';
         code.status = 'active';
         await this.giftCodeRepository.save(code);
-
-
+        
         console.log('\n\n\n\n --------------> start demoBasicTransaction \n');
     }
 
@@ -57,7 +56,7 @@ export class TransactionDemoService {
 
     async demoBasicTransaction(throwError: boolean = false) {
 
-        this.dataSource.createEntityManager().transaction(async entityManager => {
+        this.dataSource.transaction(async entityManager => {
             const user = new User();
             user.firstName = 'yu1';
             user.lastName = 'dong1';
@@ -82,7 +81,7 @@ export class TransactionDemoService {
     }
 
     private async redeemGiftCode(code: string, user_id: number, comments?: string) {
-        await this.dataSource.createEntityManager().transaction(async entityManager => {
+        await this.dataSource.transaction(async entityManager => {
             const repo = entityManager.withRepository(this.giftCodeRepository);
             const giftCode = await repo.findOne({
                 where: {code: code, status: 'active'},
@@ -126,7 +125,7 @@ export class TransactionDemoService {
 
     // one promotion code can be redeemed only twice
     private async multipleRedeemGiftCode(code: string, user_id: number, comments?: string) {
-        await this.dataSource.createEntityManager().transaction("REPEATABLE READ", async entityManager => {
+        await this.dataSource.transaction("REPEATABLE READ", async entityManager => {
             const giftCodeRepo = entityManager.withRepository(this.giftCodeRepository);
             const giftRedeemRepo = entityManager.withRepository(this.giftRedeemRepository);
 
