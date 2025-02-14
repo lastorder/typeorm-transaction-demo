@@ -19,6 +19,7 @@ export class TransactionDemoService {
         this.userRepository = this.dataSource.getRepository(User);
         this.giftCodeRepository = this.dataSource.getRepository(GiftCode);
         this.giftRedeemRepository = this.dataSource.getRepository(GiftRedeem);
+
     }
 
     async initData() {
@@ -30,6 +31,9 @@ export class TransactionDemoService {
         code.code = '123456';
         code.status = 'active';
         await this.giftCodeRepository.save(code);
+
+
+        console.log('\n\n\n\n --------------> start demoBasicTransaction \n');
     }
 
     async demoNoTransaction(throwError: boolean = false) {
@@ -50,49 +54,31 @@ export class TransactionDemoService {
         await this.userRepository.save(user);
     }
 
-    async demoWrongTransaction(throwError: boolean = false) {
-
-        this.dataSource.createEntityManager().transaction(async entityManager => {
-            const user = new User();
-            user.firstName = 'yu';
-            user.lastName = 'dong';
-            user.age = 37;
-            await this.userRepository.save(user);
-
-            if (throwError) {
-                throw new Error('Error occurred');
-            }
-
-            const user2 = new User();
-            user2.firstName = 'yu';
-            user2.lastName = 'dong';
-            user2.age = 37;
-            await this.userRepository.save(user);
-        });
-    }
 
     async demoBasicTransaction(throwError: boolean = false) {
 
         this.dataSource.createEntityManager().transaction(async entityManager => {
             const user = new User();
-            user.firstName = 'yu';
-            user.lastName = 'dong';
+            user.firstName = 'yu1';
+            user.lastName = 'dong1';
             user.age = 37;
 
-            await entityManager.withRepository(this.userRepository).save(user);
-            // await this.userRepository.save(user);
+            // await entityManager.withRepository(this.userRepository).save(user);
+            await this.userRepository.save(user);
 
             if (throwError) {
                 throw new Error('Error occurred');
             }
 
             const user2 = new User();
-            user2.firstName = 'yu';
-            user2.lastName = 'dong';
+            user2.firstName = 'yu2';
+            user2.lastName = 'dong2';
             user2.age = 37;
-            await entityManager.withRepository(this.userRepository).save(user);
-            // await this.userRepository.save(user);
+            // await entityManager.withRepository(this.userRepository).save(user);
+            await this.userRepository.save(user);
         });
+
+        console.log('--------------> Checkout if user1 been inserted, and try to solve the issue');
     }
 
     private async redeemGiftCode(code: string, user_id: number, comments?: string) {
