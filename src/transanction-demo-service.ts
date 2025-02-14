@@ -2,6 +2,7 @@ import {DataSource} from "typeorm";
 import {User} from "./entity/User";
 import {Repository} from "typeorm";
 import {GiftCode} from "./entity/GiftCode";
+import {GiftRedeem} from "./entity/GiftRedeem";
 
 function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -11,16 +12,20 @@ export class TransactionDemoService {
     dataSource: DataSource;
     userRepository: Repository<User>;
     giftCodeRepository: Repository<GiftCode>;
+    giftRedeemRepository: Repository<GiftRedeem>;
 
     constructor(dataSource: DataSource) {
         this.dataSource = dataSource;
         this.userRepository = this.dataSource.getRepository(User);
         this.giftCodeRepository = this.dataSource.getRepository(GiftCode);
+        this.giftRedeemRepository = this.dataSource.getRepository(GiftRedeem);
     }
 
     async initData() {
         await this.userRepository.clear();
         await this.giftCodeRepository.clear();
+        await this.giftRedeemRepository.clear();
+
         const code = new GiftCode();
         code.code = '123456';
         code.status = 'active';
@@ -90,7 +95,7 @@ export class TransactionDemoService {
         });
     }
 
-    private async redeemGiftCode(code: string) {
+    private async redeemGiftCode(code: string, user_id: number, comments?: string) {
         await this.dataSource.createEntityManager().transaction(async entityManager => {
             const repo = entityManager.withRepository(this.giftCodeRepository);
             const giftCode = await repo.findOne({
@@ -98,12 +103,20 @@ export class TransactionDemoService {
             });
 
             if (giftCode) {
-                console.log('--------------> Start redeeming gift code');
-                await sleep(5); // simulate some redeem process
-                console.log('--------------> Process redeeming gift code');
+                console.log('--------------> Start redeeming gift code for user: ' + user_id);
+
+                // await sleep(5); // simulate some redeem process
+                console.log('--------------> Process redeeming gift code for user: ' + user_id);
+
+                const redeem = new GiftRedeem();
+                redeem.gift_code_id = giftCode.id;
+                redeem.user_id = user_id;
+                redeem.comments = comments;
+                await this.giftRedeemRepository.save(redeem);
+
                 giftCode.status = 'redeemed';
                 await repo.save(giftCode);
-                console.log('--------------> Finish redeeming gift code');
+                console.log('--------------> Finish redeeming gift code for user: ' + user_id);
             } else {
                 console.log('--------------> Gift code not found');
             }
@@ -113,11 +126,11 @@ export class TransactionDemoService {
     async demoConcurrentTransaction() {
 
         const tasks = [
-            this.redeemGiftCode('123456'),
-            this.redeemGiftCode('123456'),
-            this.redeemGiftCode('123456'),
-            this.redeemGiftCode('123456'),
-            this.redeemGiftCode('123456'),
+            this.redeemGiftCode('123456', 1, 'first'),
+            this.redeemGiftCode('123456', 2, 'second'),
+            this.redeemGiftCode('123456', 3, 'third'),
+            this.redeemGiftCode('123456', 4, 'fourth'),
+            this.redeemGiftCode('123456', 5, 'fifth'),
         ];
         await Promise.all(tasks);
 
