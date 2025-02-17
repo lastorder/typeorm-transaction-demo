@@ -31,15 +31,14 @@ export class TransactionDemoService {
         code.code = '123456';
         code.status = 'active';
         await this.giftCodeRepository.save(code);
-        
+
         console.log('\n\n\n\n --------------> start demoBasicTransaction \n');
     }
 
     async demoNoTransaction(throwError: boolean = false) {
         const user = new User();
-        user.firstName = 'yu';
-        user.lastName = 'dong';
-        user.age = 37;
+        user.firstName = 'yu1';
+        user.lastName = 'dong1';
         await this.userRepository.save(user);
 
         if (throwError) {
@@ -47,65 +46,70 @@ export class TransactionDemoService {
         }
 
         const user2 = new User();
-        user2.firstName = 'yu';
-        user2.lastName = 'dong';
-        user2.age = 37;
+        user2.firstName = 'yu2';
+        user2.lastName = 'dong2';
         await this.userRepository.save(user);
     }
 
 
     async demoBasicTransaction(throwError: boolean = false) {
 
-        this.dataSource.transaction(async entityManager => {
-            const user = new User();
-            user.firstName = 'yu1';
-            user.lastName = 'dong1';
-            user.age = 37;
+        try {
+            await this.dataSource.transaction(async entityManager => {
+                const user = new User();
+                user.firstName = 'yu1';
+                user.lastName = 'dong1';
 
-            // await entityManager.withRepository(this.userRepository).save(user);
-            await this.userRepository.save(user);
+                await this.userRepository.save(user);
 
-            if (throwError) {
-                throw new Error('Error occurred');
-            }
+                if (throwError) {
+                    throw "Error occurred";
+                }
 
-            const user2 = new User();
-            user2.firstName = 'yu2';
-            user2.lastName = 'dong2';
-            user2.age = 37;
-            // await entityManager.withRepository(this.userRepository).save(user);
-            await this.userRepository.save(user);
-        });
+                const user2 = new User();
+                user2.firstName = 'yu2';
+                user2.lastName = 'dong2';
+                await this.userRepository.save(user);
+            });
+        } catch (error) {
+            console.log('--------------> Error occurred: ' + error);
+        }
 
         console.log('--------------> Checkout if user1 been inserted, and try to solve the issue');
     }
 
     private async redeemGiftCode(code: string, user_id: number, comments?: string) {
-        await this.dataSource.transaction(async entityManager => {
-            const repo = entityManager.withRepository(this.giftCodeRepository);
-            const giftCode = await repo.findOne({
-                where: {code: code, status: 'active'},
+
+        try {
+            await this.dataSource.transaction(async entityManager => {
+                const repo = entityManager.withRepository(this.giftCodeRepository);
+                const giftCode = await repo.findOne({
+                    where: {code: code, status: 'active'},
+                });
+
+                if (giftCode) {
+                    console.log('--------------> Start redeeming gift code for user: ' + user_id);
+
+                    // await sleep(5); // simulate some redeem process
+                    console.log('--------------> Process redeeming gift code for user: ' + user_id);
+
+                    const redeem = new GiftRedeem();
+                    redeem.gift_code_id = giftCode.id;
+                    redeem.user_id = user_id;
+                    redeem.comments = comments;
+                    await this.giftRedeemRepository.save(redeem);
+
+                    giftCode.status = 'redeemed';
+                    await repo.save(giftCode);
+                    console.log('--------------> Finish redeeming gift code for user: ' + user_id);
+                } else {
+                    console.log('--------------> Gift code not found');
+                }
             });
+        } catch (error) {
+            console.log('--------------> Error occurred: ' + error);
+        }
 
-            if (giftCode) {
-                console.log('--------------> Start redeeming gift code for user: ' + user_id);
-
-                // await sleep(5); // simulate some redeem process
-                console.log('--------------> Process redeeming gift code for user: ' + user_id);
-
-                const redeem = new GiftRedeem();
-                redeem.gift_code_id = giftCode.id;
-                redeem.user_id = user_id;
-                redeem.comments = comments;
-                await this.giftRedeemRepository.save(redeem);
-
-                giftCode.status = 'redeemed';
-                await repo.save(giftCode);
-                console.log('--------------> Finish redeeming gift code for user: ' + user_id);
-            } else {
-                console.log('--------------> Gift code not found');
-            }
-        });
     }
 
     async demoConcurrentTransaction() {
@@ -125,35 +129,40 @@ export class TransactionDemoService {
 
     // one promotion code can be redeemed only twice
     private async multipleRedeemGiftCode(code: string, user_id: number, comments?: string) {
-        await this.dataSource.transaction("REPEATABLE READ", async entityManager => {
-            const giftCodeRepo = entityManager.withRepository(this.giftCodeRepository);
-            const giftRedeemRepo = entityManager.withRepository(this.giftRedeemRepository);
+        try {
+            await this.dataSource.transaction("REPEATABLE READ", async entityManager => {
+                const giftCodeRepo = entityManager.withRepository(this.giftCodeRepository);
+                const giftRedeemRepo = entityManager.withRepository(this.giftRedeemRepository);
 
-            const giftCode = await giftCodeRepo.findOne({
-                where: {code: code, status: 'active'},
-            });
+                const giftCode = await giftCodeRepo.findOne({
+                    where: {code: code, status: 'active'},
+                });
 
-            if (giftCode) {
-                console.log('--------------> Start redeeming gift code for user: ' + user_id);
-                const alreadyRedeemCount = await giftRedeemRepo.count({where: {gift_code_id: giftCode.id}})
+                if (giftCode) {
+                    console.log('--------------> Start redeeming gift code for user: ' + user_id);
+                    const alreadyRedeemCount = await giftRedeemRepo.count({where: {gift_code_id: giftCode.id}})
 
-                if (alreadyRedeemCount < 2) {
-                    console.log('--------------> Process redeeming gift code for user: ' + user_id);
-                    const redeem = new GiftRedeem();
-                    redeem.gift_code_id = giftCode.id;
-                    redeem.user_id = user_id;
-                    redeem.comments = comments;
-                    await giftRedeemRepo.save(redeem);
+                    if (alreadyRedeemCount < 2) {
+                        console.log('--------------> Process redeeming gift code for user: ' + user_id);
+                        const redeem = new GiftRedeem();
+                        redeem.gift_code_id = giftCode.id;
+                        redeem.user_id = user_id;
+                        redeem.comments = comments;
+                        await giftRedeemRepo.save(redeem);
 
-                    console.log('--------------> Finish redeeming gift code for user: ' + user_id);
+                        console.log('--------------> Finish redeeming gift code for user: ' + user_id);
+                    } else {
+                        console.log('--------------> Gift code has been redeemed twice');
+                    }
+
                 } else {
-                    console.log('--------------> Gift code has been redeemed twice');
+                    console.log('--------------> Gift code not found');
                 }
+            });
+        } catch (error) {
+            console.log('--------------> Error occurred: ' + error);
+        }
 
-            } else {
-                console.log('--------------> Gift code not found');
-            }
-        });
     }
 
     async demoPhantomReadTransaction() {
